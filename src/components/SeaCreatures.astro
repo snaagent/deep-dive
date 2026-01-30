@@ -1,0 +1,737 @@
+---
+// Deep sea ambiance - boid flocking fish with feeding interaction
+---
+
+<div class="sea-creatures" id="seaCreatures">
+  <!-- Surface brightness gradient -->
+  <div class="surface-glow"></div>
+
+  <!-- Surface light effect - light rays from above -->
+  <div class="surface-light">
+    <div class="light-ray ray-1"></div>
+    <div class="light-ray ray-2"></div>
+    <div class="light-ray ray-3"></div>
+    <div class="light-ray ray-4"></div>
+    <div class="light-ray ray-5"></div>
+  </div>
+
+  <!-- Caustics - rippling light pattern -->
+  <div class="caustics">
+    <div class="caustic-layer caustic-1"></div>
+    <div class="caustic-layer caustic-2"></div>
+    <div class="caustic-layer caustic-3"></div>
+  </div>
+
+  <!-- Subtle wave distortion overlay -->
+  <div class="wave-overlay"></div>
+
+  <!-- Canvas for fish -->
+  <canvas id="fishCanvas"></canvas>
+
+  <!-- Food particles container - highest z-index -->
+  <div id="foodContainer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;"></div>
+
+  <!-- Bubbles -->
+  <div class="creature bubbles bubbles-1">
+    <svg viewBox="0 0 20 80" fill="currentColor">
+      <circle cx="10" cy="70" r="2.5" opacity="0.07"/>
+      <circle cx="8" cy="50" r="1.8" opacity="0.05"/>
+      <circle cx="12" cy="30" r="2" opacity="0.04"/>
+    </svg>
+  </div>
+  <div class="creature bubbles bubbles-2">
+    <svg viewBox="0 0 20 80" fill="currentColor">
+      <circle cx="12" cy="72" r="2" opacity="0.06"/>
+      <circle cx="10" cy="48" r="1.5" opacity="0.04"/>
+    </svg>
+  </div>
+</div>
+
+<style>
+  .sea-creatures {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+  }
+
+  #fishCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Surface glow - brightness from above */
+  .surface-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60vh;
+    background: linear-gradient(
+      180deg,
+      rgba(160, 200, 240, 0.15) 0%,
+      rgba(140, 180, 220, 0.08) 25%,
+      rgba(120, 160, 200, 0.04) 50%,
+      rgba(100, 140, 180, 0.01) 75%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Surface light container */
+  .surface-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* Light rays - soft, diffused, barely distinct */
+  .light-ray {
+    position: absolute;
+    top: -100px;
+    height: 75vh;
+    background: linear-gradient(
+      180deg,
+      rgba(180, 210, 240, 0.06) 0%,
+      rgba(160, 195, 230, 0.03) 40%,
+      rgba(140, 180, 220, 0.01) 70%,
+      transparent 100%
+    );
+    transform-origin: top center;
+    filter: blur(40px);
+    animation: ray-gentle 25s ease-in-out infinite;
+  }
+
+  .ray-1 {
+    left: 0%;
+    width: 35%;
+    transform: rotate(-5deg);
+    animation-delay: 0s;
+  }
+
+  .ray-2 {
+    left: 20%;
+    width: 40%;
+    height: 80vh;
+    transform: rotate(-2deg);
+    animation-delay: -8s;
+  }
+
+  .ray-3 {
+    left: 45%;
+    width: 35%;
+    transform: rotate(2deg);
+    animation-delay: -16s;
+  }
+
+  .ray-4 {
+    left: 65%;
+    width: 40%;
+    height: 70vh;
+    transform: rotate(4deg);
+    animation-delay: -5s;
+  }
+
+  .ray-5 {
+    left: 80%;
+    width: 30%;
+    transform: rotate(6deg);
+    animation-delay: -12s;
+  }
+
+  @keyframes ray-gentle {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scaleX(1) translateX(0);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scaleX(1.03) translateX(5px);
+    }
+  }
+
+  /* Caustics - underwater light ripple effect */
+  .caustics {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60vh;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0.4;
+  }
+
+  .caustic-layer {
+    position: absolute;
+    inset: 0;
+    background-size: 400px 400px;
+    mix-blend-mode: overlay;
+  }
+
+  .caustic-1 {
+    background:
+      radial-gradient(ellipse 80px 60px at 20% 30%, rgba(180, 220, 255, 0.15) 0%, transparent 70%),
+      radial-gradient(ellipse 100px 70px at 60% 20%, rgba(200, 230, 255, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 70px 90px at 80% 50%, rgba(170, 210, 250, 0.1) 0%, transparent 70%),
+      radial-gradient(ellipse 90px 60px at 40% 60%, rgba(190, 220, 255, 0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 60px 80px at 10% 70%, rgba(180, 215, 255, 0.1) 0%, transparent 70%);
+    animation: caustic-drift-1 12s ease-in-out infinite;
+  }
+
+  .caustic-2 {
+    background:
+      radial-gradient(ellipse 70px 50px at 30% 40%, rgba(190, 225, 255, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 85px 65px at 70% 30%, rgba(175, 215, 250, 0.1) 0%, transparent 70%),
+      radial-gradient(ellipse 60px 70px at 50% 70%, rgba(185, 220, 255, 0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 75px 55px at 90% 60%, rgba(195, 225, 255, 0.1) 0%, transparent 70%);
+    animation: caustic-drift-2 15s ease-in-out infinite;
+  }
+
+  .caustic-3 {
+    background:
+      radial-gradient(ellipse 90px 70px at 15% 25%, rgba(200, 230, 255, 0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 65px 85px at 55% 45%, rgba(180, 220, 255, 0.1) 0%, transparent 70%),
+      radial-gradient(ellipse 80px 60px at 85% 35%, rgba(190, 225, 255, 0.07) 0%, transparent 70%);
+    animation: caustic-drift-3 18s ease-in-out infinite;
+  }
+
+  @keyframes caustic-drift-1 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.6;
+    }
+    33% {
+      transform: translate(15px, 10px) scale(1.05);
+      opacity: 0.8;
+    }
+    66% {
+      transform: translate(-10px, 5px) scale(0.95);
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes caustic-drift-2 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: translate(-20px, 15px) scale(1.08);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes caustic-drift-3 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.4;
+    }
+    25% {
+      transform: translate(10px, -5px) scale(1.03);
+      opacity: 0.6;
+    }
+    75% {
+      transform: translate(-15px, 10px) scale(0.97);
+      opacity: 0.5;
+    }
+  }
+
+  /* Subtle wave distortion */
+  .wave-overlay {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 4px,
+      rgba(200, 190, 180, 0.002) 4px,
+      rgba(200, 190, 180, 0.002) 5px
+    );
+    animation: wave-drift 10s ease-in-out infinite;
+    opacity: 0.4;
+  }
+
+  @keyframes wave-drift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+  }
+
+  /* Food particles */
+  .food-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .food-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #FF6B00;
+    border-radius: 50%;
+    box-shadow:
+      0 0 10px 2px #FF6B00,
+      0 0 20px 4px rgba(255, 107, 0, 0.6),
+      0 0 30px 6px rgba(255, 107, 0, 0.3);
+  }
+
+  /* Bubbles */
+  .creature {
+    position: absolute;
+    color: var(--color-beige);
+    opacity: 0;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  .bubbles { width: 20px; }
+
+  .bubbles-1 {
+    bottom: -90px;
+    left: 30%;
+    animation: rise-bubbles 60s ease-in-out infinite 5s;
+  }
+
+  .bubbles-2 {
+    bottom: -90px;
+    left: 70%;
+    animation: rise-bubbles 75s ease-in-out infinite 30s;
+  }
+
+  @keyframes rise-bubbles {
+    0% { bottom: -90px; opacity: 0; transform: translateX(0); }
+    8% { opacity: 1; }
+    25% { transform: translateX(4px); }
+    50% { transform: translateX(-3px); }
+    75% { transform: translateX(5px); }
+    92% { opacity: 1; }
+    100% { bottom: 110%; opacity: 0; transform: translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .creature, .wave-overlay, .caustic-layer { animation: none; }
+    .light-ray::before, .light-ray::after { animation: none; }
+  }
+</style>
+
+<script is:inline>
+(function() {
+  const canvas = document.getElementById('fishCanvas');
+  const ctx = canvas.getContext('2d');
+  const foodContainer = document.getElementById('foodContainer');
+
+  let width, height;
+  const fish = [];
+  const food = [];
+  const FISH_COUNT = 5;
+
+  // Boid parameters - slow and elegant
+  const SEPARATION_DIST = 35;
+  const ALIGNMENT_DIST = 70;
+  const COHESION_DIST = 120;
+  const FOOD_ATTRACT_DIST = 400;
+  const MAX_SPEED = 0.7;
+  const MIN_SPEED = 0.2;
+
+  // Fish class with boid behavior
+  class Fish {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = (Math.random() - 0.5) * 0.5;
+      this.size = 8 + Math.random() * 5;
+      this.baseOpacity = 0.25 + Math.random() * 0.15;
+      this.opacity = this.baseOpacity;
+      this.wiggleOffset = Math.random() * Math.PI * 2;
+      this.wiggleSpeed = 0.04 + Math.random() * 0.02;
+      this.glowIntensity = 0;
+      this.isGlowing = false;
+    }
+
+    // Separation: gently steer to avoid crowding
+    separate(fishes) {
+      let steerX = 0, steerY = 0, count = 0;
+      for (const other of fishes) {
+        const d = this.dist(other);
+        if (d > 0 && d < SEPARATION_DIST) {
+          steerX += (this.x - other.x) / d;
+          steerY += (this.y - other.y) / d;
+          count++;
+        }
+      }
+      if (count > 0) {
+        steerX /= count;
+        steerY /= count;
+      }
+      return { x: steerX * 0.3, y: steerY * 0.3 };
+    }
+
+    // Alignment: gently steer towards average heading
+    align(fishes) {
+      let avgVx = 0, avgVy = 0, count = 0;
+      for (const other of fishes) {
+        const d = this.dist(other);
+        if (d > 0 && d < ALIGNMENT_DIST) {
+          avgVx += other.vx;
+          avgVy += other.vy;
+          count++;
+        }
+      }
+      if (count > 0) {
+        avgVx /= count;
+        avgVy /= count;
+        return { x: (avgVx - this.vx) * 0.02, y: (avgVy - this.vy) * 0.02 };
+      }
+      return { x: 0, y: 0 };
+    }
+
+    // Cohesion: gently steer towards center of nearby fishes
+    cohere(fishes) {
+      let centerX = 0, centerY = 0, count = 0;
+      for (const other of fishes) {
+        const d = this.dist(other);
+        if (d > 0 && d < COHESION_DIST) {
+          centerX += other.x;
+          centerY += other.y;
+          count++;
+        }
+      }
+      if (count > 0) {
+        centerX /= count;
+        centerY /= count;
+        return {
+          x: (centerX - this.x) * 0.003,
+          y: (centerY - this.y) * 0.003
+        };
+      }
+      return { x: 0, y: 0 };
+    }
+
+    // Gracefully attract to food and eat it
+    seekFood(foods) {
+      let steerX = 0, steerY = 0;
+      let closestDist = Infinity;
+      let closestFood = null;
+      let closestIndex = -1;
+
+      for (let i = 0; i < foods.length; i++) {
+        const f = foods[i];
+        const d = Math.hypot(f.x - this.x, f.y - this.y);
+        if (d < FOOD_ATTRACT_DIST && d < closestDist) {
+          closestDist = d;
+          closestFood = f;
+          closestIndex = i;
+        }
+      }
+
+      if (closestFood) {
+        const dx = closestFood.x - this.x;
+        const dy = closestFood.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Check if fish reached the food (eating distance)
+        if (dist < 20) {
+          // Eat the food - trigger glow
+          this.glowIntensity = 1;
+          this.isGlowing = true;
+          // Mark food as eaten
+          closestFood.eaten = true;
+        }
+
+        if (dist > 0) {
+          // Gentle attraction
+          const strength = Math.min(0.03, 15 / (dist + 20));
+          steerX = (dx / dist) * strength;
+          steerY = (dy / dist) * strength;
+        }
+      }
+      return { x: steerX, y: steerY };
+    }
+
+    dist(other) {
+      return Math.hypot(this.x - other.x, this.y - other.y);
+    }
+
+    update(fishes, foods) {
+      // Apply boid rules
+      const sep = this.separate(fishes);
+      const ali = this.align(fishes);
+      const coh = this.cohere(fishes);
+      const foodSeek = this.seekFood(foods);
+
+      // Combine forces smoothly
+      this.vx += sep.x + ali.x + coh.x + foodSeek.x;
+      this.vy += sep.y + ali.y + coh.y + foodSeek.y;
+
+      // Very subtle wandering
+      this.vx += (Math.random() - 0.5) * 0.01;
+      this.vy += (Math.random() - 0.5) * 0.01;
+
+      // Smooth speed limiting
+      const speed = Math.hypot(this.vx, this.vy);
+      if (speed > MAX_SPEED) {
+        this.vx = (this.vx / speed) * MAX_SPEED;
+        this.vy = (this.vy / speed) * MAX_SPEED;
+      } else if (speed < MIN_SPEED && speed > 0) {
+        // Keep minimum speed for graceful movement
+        this.vx = (this.vx / speed) * MIN_SPEED;
+        this.vy = (this.vy / speed) * MIN_SPEED;
+      }
+
+      // Apply velocity smoothly
+      this.x += this.vx;
+      this.y += this.vy;
+
+      // Wrap around edges with margin
+      const margin = 150;
+      if (this.x < -margin) this.x = width + margin;
+      if (this.x > width + margin) this.x = -margin;
+      if (this.y < -margin) this.y = height + margin;
+      if (this.y > height + margin) this.y = -margin;
+
+      // Gentle wiggle
+      this.wiggleOffset += this.wiggleSpeed;
+
+      // Handle glow fade
+      if (this.isGlowing) {
+        this.glowIntensity -= 0.008; // Fade over ~2 seconds
+        this.opacity = this.baseOpacity + (0.5 * this.glowIntensity);
+        if (this.glowIntensity <= 0) {
+          this.glowIntensity = 0;
+          this.isGlowing = false;
+          this.opacity = this.baseOpacity;
+        }
+      }
+    }
+
+    draw(ctx) {
+      const angle = Math.atan2(this.vy, this.vx);
+      const wiggle = Math.sin(this.wiggleOffset) * 0.15;
+
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(angle + wiggle);
+
+      // Glow effect when eating
+      if (this.glowIntensity > 0) {
+        ctx.shadowColor = '#FF6B00';
+        ctx.shadowBlur = 15 * this.glowIntensity;
+      }
+
+      ctx.globalAlpha = this.opacity;
+
+      // Fish body - color shifts to orange when glowing
+      const r = Math.round(232 + (255 - 232) * this.glowIntensity);
+      const g = Math.round(222 - (222 - 107) * this.glowIntensity);
+      const b = Math.round(211 - 211 * this.glowIntensity);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.size, this.size * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tail
+      ctx.beginPath();
+      ctx.moveTo(-this.size * 0.8, 0);
+      ctx.lineTo(-this.size * 1.5, -this.size * 0.5);
+      ctx.lineTo(-this.size * 1.5, this.size * 0.5);
+      ctx.closePath();
+      ctx.globalAlpha = this.opacity * 0.8;
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  // Food particle class - slow sinking, highly visible, smooth fade
+  class FoodParticle {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.vy = 0.2 + Math.random() * 0.2;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.life = 1;
+      this.eaten = false;
+      this.fadeSpeed = 0.003;
+      this.element = document.createElement('div');
+      this.element.style.cssText = `
+        position: absolute;
+        left: ${x}px;
+        top: ${y}px;
+        width: 8px;
+        height: 8px;
+        background: #FF6B00;
+        border-radius: 50%;
+        box-shadow: 0 0 10px 2px #FF6B00, 0 0 20px 4px rgba(255,107,0,0.6);
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+      `;
+      foodContainer.appendChild(this.element);
+    }
+
+    update() {
+      // If eaten, fade out faster
+      if (this.eaten) {
+        this.fadeSpeed = 0.03;
+      }
+
+      // Slow sinking with slight drift
+      this.y += this.vy;
+      this.x += this.vx;
+      this.vx *= 0.995;
+      this.life -= this.fadeSpeed;
+
+      // Smooth easing for opacity
+      const easedLife = this.life * this.life; // Quadratic ease out
+
+      this.element.style.left = this.x + 'px';
+      this.element.style.top = this.y + 'px';
+      this.element.style.opacity = String(easedLife);
+
+      // Smooth scale transition
+      const scale = 0.3 + easedLife * 0.7;
+      this.element.style.transform = 'scale(' + scale + ')';
+
+      // Update glow intensity as it fades
+      const glowSize = Math.round(10 * easedLife);
+      const glowSpread = Math.round(20 * easedLife);
+      this.element.style.boxShadow = `0 0 ${glowSize}px 2px rgba(255,107,0,${easedLife}), 0 0 ${glowSpread}px 4px rgba(255,107,0,${easedLife * 0.6})`;
+
+      return this.life > 0.01 && this.y < height + 100;
+    }
+
+    remove() {
+      if (this.element.parentNode) {
+        this.element.parentNode.removeChild(this.element);
+      }
+    }
+  }
+
+  function resize() {
+    width = window.innerWidth;
+    // Use full document height for scrollable content
+    height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, window.innerHeight);
+    canvas.width = width;
+    canvas.height = height;
+    // Update container height
+    const container = document.getElementById('seaCreatures');
+    if (container) {
+      container.style.height = height + 'px';
+    }
+  }
+
+  function init() {
+    resize();
+
+    // Create fish scattered across the visible viewport initially
+    const viewHeight = window.innerHeight;
+    for (let i = 0; i < FISH_COUNT; i++) {
+      const x = width * 0.2 + Math.random() * width * 0.6;
+      const y = viewHeight * 0.3 + Math.random() * viewHeight * 0.5;
+      fish.push(new Fish(x, y));
+    }
+
+    // Give them slow initial velocity
+    fish.forEach(f => {
+      f.vx = 0.2 + Math.random() * 0.3;
+      f.vy = (Math.random() - 0.5) * 0.2;
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    // Update and draw fish
+    for (const f of fish) {
+      f.update(fish, food);
+      f.draw(ctx);
+    }
+
+    // Update food
+    for (let i = food.length - 1; i >= 0; i--) {
+      if (!food[i].update()) {
+        food[i].remove();
+        food.splice(i, 1);
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  // Click handler for feeding - only on empty areas
+  document.addEventListener('click', function(e) {
+    // Check if feeding is enabled via toggle
+    if (window.fishFeedEnabled === false) {
+      return;
+    }
+
+    // Check if click is on any interactive element
+    const clickedElement = e.target;
+    const interactiveParent = clickedElement.closest('a, button, input, label, select, textarea, [role="button"], .post-card, .card-link, nav, header, footer a, .feed-toggle, .toggle-label');
+
+    // Also check the element itself
+    const isInteractive =
+      clickedElement.tagName === 'A' ||
+      clickedElement.tagName === 'BUTTON' ||
+      clickedElement.tagName === 'INPUT' ||
+      clickedElement.tagName === 'LABEL' ||
+      clickedElement.classList.contains('card-link') ||
+      clickedElement.classList.contains('post-card') ||
+      clickedElement.classList.contains('card-title') ||
+      clickedElement.classList.contains('read-more') ||
+      clickedElement.classList.contains('toggle-slider') ||
+      clickedElement.classList.contains('toggle-icon');
+
+    if (interactiveParent || isInteractive) {
+      // Let the click proceed normally without dropping food
+      return;
+    }
+
+    // Account for scroll position since container is absolute, not fixed
+    const x = e.clientX;
+    const y = e.clientY + window.scrollY;
+
+    // Create food particles in a small cluster
+    for (let i = 0; i < 6; i++) {
+      const fx = x + (Math.random() - 0.5) * 40;
+      const fy = y + (Math.random() - 0.5) * 25;
+      food.push(new FoodParticle(fx, fy));
+    }
+  });
+
+  window.addEventListener('resize', resize);
+
+  // Recalculate on scroll (for dynamic content) and periodically
+  let resizeTimeout;
+  window.addEventListener('scroll', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(resize, 100);
+  });
+
+  // Also check periodically in case content loads dynamically
+  setInterval(function() {
+    const newHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, window.innerHeight);
+    if (Math.abs(newHeight - height) > 50) {
+      resize();
+    }
+  }, 1000);
+
+  init();
+  animate();
+})();
+</script>
