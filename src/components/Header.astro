@@ -249,11 +249,12 @@ function isActive(href: string): boolean {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(11, 18, 33, 0.98);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: var(--space-2xl);
+      gap: 0;
       opacity: 0;
       visibility: hidden;
       transition: opacity var(--transition-base), visibility var(--transition-base);
@@ -265,8 +266,38 @@ function isActive(href: string): boolean {
       visibility: visible;
     }
 
+    .nav-links li {
+      background: rgba(11, 18, 33, 0.95);
+      border-left: 1px solid rgba(249, 115, 22, 0.3);
+      border-right: 1px solid rgba(249, 115, 22, 0.3);
+      padding: 0;
+      text-align: center;
+      width: 260px;
+    }
+
+    .nav-links li:first-child {
+      border-top: 1px solid var(--color-accent);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      padding-top: var(--space-sm);
+    }
+
+    .nav-links li:last-child {
+      border-bottom: 1px solid var(--color-accent);
+      border-bottom-left-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+      padding-bottom: var(--space-sm);
+    }
+
     .nav-link {
-      font-size: 1.5rem;
+      font-size: 1.25rem;
+      display: block;
+      padding: var(--space-lg) var(--space-xl);
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      background: rgba(249, 115, 22, 0.1);
     }
 
     .mobile-toggle[aria-expanded="true"] .hamburger {
