@@ -224,16 +224,23 @@ function isActive(href: string): boolean {
   }
 
   @media (max-width: 768px) {
+    .nav {
+      position: relative;
+    }
+
     .mobile-toggle {
       display: block;
-      z-index: 101;
+      z-index: 201;
+      position: relative;
     }
 
     .feed-toggle {
-      position: fixed;
-      top: var(--space-md);
-      right: var(--space-lg);
-      z-index: 102;
+      position: absolute;
+      right: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: 0;
+      z-index: 200;
     }
 
     .nav-links {
@@ -242,14 +249,15 @@ function isActive(href: string): boolean {
       left: 0;
       right: 0;
       bottom: 0;
-      background: var(--color-background);
+      background: rgba(11, 18, 33, 0.98);
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: var(--space-xl);
+      gap: var(--space-2xl);
       opacity: 0;
       visibility: hidden;
       transition: opacity var(--transition-base), visibility var(--transition-base);
+      z-index: 150;
     }
 
     .nav-links.open {
@@ -258,7 +266,7 @@ function isActive(href: string): boolean {
     }
 
     .nav-link {
-      font-size: 1.25rem;
+      font-size: 1.5rem;
     }
 
     .mobile-toggle[aria-expanded="true"] .hamburger {
@@ -280,10 +288,28 @@ function isActive(href: string): boolean {
   const toggle = document.querySelector('.mobile-toggle');
   const navLinks = document.querySelector('.nav-links');
 
+  function closeMenu() {
+    toggle?.setAttribute('aria-expanded', 'false');
+    navLinks?.classList.remove('open');
+  }
+
+  function openMenu() {
+    toggle?.setAttribute('aria-expanded', 'true');
+    navLinks?.classList.add('open');
+  }
+
   toggle?.addEventListener('click', () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!expanded));
-    navLinks?.classList.toggle('open');
+    if (expanded) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+
+  // Close menu when a nav link is clicked
+  document.querySelectorAll('.nav-link').forEach(function(link) {
+    link.addEventListener('click', closeMenu);
   });
 
   // Fish feed toggle
