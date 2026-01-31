@@ -673,18 +673,107 @@
     requestAnimationFrame(animate);
   }
 
-  // Click handler for feeding - only on empty areas
-  document.addEventListener('click', function(e) {
-    // Check if feeding is enabled via toggle
-    if (window.fishFeedEnabled === false) {
-      return;
+  // Charging particle class for hold effect
+  class ChargingParticle {
+    constructor(x, y, targetX, targetY) {
+      this.x = x;
+      this.y = y;
+      this.targetX = targetX;
+      this.targetY = targetY;
+      this.life = 1;
+      this.element = document.createElement('div');
+      this.element.style.cssText = `
+        position: absolute;
+        left: ${x}px;
+        top: ${y}px;
+        width: 6px;
+        height: 6px;
+        background: #FFD700;
+        border-radius: 50%;
+        box-shadow: 0 0 8px 2px #FFD700, 0 0 15px 4px rgba(255,215,0,0.6);
+        pointer-events: none;
+      `;
+      foodContainer.appendChild(this.element);
     }
 
-    // Check if click is on any interactive element
+    update(targetX, targetY) {
+      this.targetX = targetX;
+      this.targetY = targetY;
+      // Move towards target
+      this.x += (this.targetX - this.x) * 0.15;
+      this.y += (this.targetY - this.y) * 0.15;
+      this.element.style.left = this.x + 'px';
+      this.element.style.top = this.y + 'px';
+      return true;
+    }
+
+    remove() {
+      if (this.element.parentNode) {
+        this.element.parentNode.removeChild(this.element);
+      }
+    }
+  }
+
+  // Explosion particle class
+  class ExplosionParticle {
+    constructor(x, y, angle) {
+      this.x = x;
+      this.y = y;
+      this.angle = angle;
+      this.speed = 3 + Math.random() * 2;
+      this.life = 1;
+      this.element = document.createElement('div');
+      this.element.style.cssText = `
+        position: absolute;
+        left: ${x}px;
+        top: ${y}px;
+        width: 5px;
+        height: 5px;
+        background: #FF6B00;
+        border-radius: 50%;
+        box-shadow: 0 0 10px 3px #FF6B00, 0 0 20px 5px rgba(255,107,0,0.8);
+        pointer-events: none;
+      `;
+      foodContainer.appendChild(this.element);
+    }
+
+    update() {
+      // Move outward
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
+      this.speed *= 0.92;
+      this.life -= 0.025;
+
+      this.element.style.left = this.x + 'px';
+      this.element.style.top = this.y + 'px';
+      this.element.style.opacity = String(this.life);
+
+      const scale = 0.5 + this.life * 0.5;
+      this.element.style.transform = 'scale(' + scale + ')';
+
+      return this.life > 0;
+    }
+
+    remove() {
+      if (this.element.parentNode) {
+        this.element.parentNode.removeChild(this.element);
+      }
+    }
+  }
+
+  // Hold-to-charge state
+  let isHolding = false;
+  let holdStartTime = 0;
+  let holdX = 0;
+  let holdY = 0;
+  let chargingParticles = [];
+  let explosionParticles = [];
+  let isCharged = false;
+  let chargeAnimationId = null;
+
+  function isInteractiveElement(e) {
     const clickedElement = e.target;
     const interactiveParent = clickedElement.closest('a, button, input, label, select, textarea, [role="button"], .post-card, .card-link, nav, header, footer a, .feed-toggle, .toggle-label');
-
-    // Also check the element itself
     const isInteractive =
       clickedElement.tagName === 'A' ||
       clickedElement.tagName === 'BUTTON' ||
@@ -696,9 +785,128 @@
       clickedElement.classList.contains('read-more') ||
       clickedElement.classList.contains('toggle-slider') ||
       clickedElement.classList.contains('toggle-icon');
+    return interactiveParent || isInteractive;
+  }
 
-    if (interactiveParent || isInteractive) {
-      // Let the click proceed normally without dropping food
+  function updateCharging() {
+    if (!isHolding) return;
+
+    const elapsed = Date.now() - holdStartTime;
+    const targetX = holdX;
+    const targetY = holdY + window.scrollY;
+
+    // After 3 seconds, start charging effect
+    if (elapsed >= 3000 && !isCharged) {
+      isCharged = true;
+      // Create charging particles around cursor
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const dist = 60 + Math.random() * 30;
+        const px = targetX + Math.cos(angle) * dist;
+        const py = targetY + Math.sin(angle) * dist;
+        chargingParticles.push(new ChargingParticle(px, py, targetX, targetY));
+      }
+    }
+
+    // Update charging particles
+    if (isCharged) {
+      for (const p of chargingParticles) {
+        p.update(targetX, targetY);
+      }
+    }
+
+    chargeAnimationId = requestAnimationFrame(updateCharging);
+  }
+
+  function updateExplosion() {
+    for (let i = explosionParticles.length - 1; i >= 0; i--) {
+      if (!explosionParticles[i].update()) {
+        explosionParticles[i].remove();
+        explosionParticles.splice(i, 1);
+      }
+    }
+    if (explosionParticles.length > 0) {
+      requestAnimationFrame(updateExplosion);
+    }
+  }
+
+  // Mouse down - start tracking hold
+  document.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return; // Left button only
+    if (window.fishFeedEnabled === false) return;
+    if (isInteractiveElement(e)) return;
+
+    isHolding = true;
+    holdStartTime = Date.now();
+    holdX = e.clientX;
+    holdY = e.clientY;
+    isCharged = false;
+    updateCharging();
+  });
+
+  // Mouse move - update hold position
+  document.addEventListener('mousemove', function(e) {
+    if (isHolding) {
+      holdX = e.clientX;
+      holdY = e.clientY;
+    }
+  });
+
+  // Mouse up - release
+  document.addEventListener('mouseup', function(e) {
+    if (e.button !== 0) return;
+
+    if (chargeAnimationId) {
+      cancelAnimationFrame(chargeAnimationId);
+      chargeAnimationId = null;
+    }
+
+    const wasCharged = isCharged;
+    const x = holdX;
+    const y = holdY + window.scrollY;
+
+    // Clear charging particles
+    for (const p of chargingParticles) {
+      p.remove();
+    }
+    chargingParticles = [];
+
+    // If was charged, create explosion
+    if (wasCharged) {
+      const particleCount = 16;
+      for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2;
+        explosionParticles.push(new ExplosionParticle(x, y, angle));
+      }
+      updateExplosion();
+
+      // Also drop food at explosion points (25px radius)
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const fx = x + Math.cos(angle) * 25;
+        const fy = y + Math.sin(angle) * 25;
+        food.push(new FoodParticle(fx, fy));
+      }
+    }
+
+    isHolding = false;
+    isCharged = false;
+  });
+
+  // Click handler for feeding - only on empty areas (short clicks)
+  document.addEventListener('click', function(e) {
+    // Check if feeding is enabled via toggle
+    if (window.fishFeedEnabled === false) {
+      return;
+    }
+
+    if (isInteractiveElement(e)) {
+      return;
+    }
+
+    // Only do normal food drop for quick clicks (under 3 seconds)
+    // Long holds are handled by mouseup
+    if (Date.now() - holdStartTime >= 3000) {
       return;
     }
 
