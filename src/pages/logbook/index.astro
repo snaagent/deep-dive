@@ -8,6 +8,24 @@ const allPosts = await getCollection('blog', ({ data }) => !data.draft && data.c
 const sortedPosts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
+
+// Extract unique years and months
+const dates = sortedPosts.map(post => post.data.pubDate);
+const years = [...new Set(dates.map(d => d.getFullYear()))].sort((a, b) => b - a);
+const months = [
+  { value: 1, label: 'Jan' },
+  { value: 2, label: 'Feb' },
+  { value: 3, label: 'Mar' },
+  { value: 4, label: 'Apr' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'Jun' },
+  { value: 7, label: 'Jul' },
+  { value: 8, label: 'Aug' },
+  { value: 9, label: 'Sep' },
+  { value: 10, label: 'Oct' },
+  { value: 11, label: 'Nov' },
+  { value: 12, label: 'Dec' },
+];
 ---
 
 <BaseLayout
@@ -32,18 +50,59 @@ const sortedPosts = allPosts.sort(
       </p>
     </header>
 
+    {sortedPosts.length > 0 && (
+      <div class="index-container">
+        <div class="index-section">
+          <div class="index-label">Year</div>
+          <div class="index-tabs" id="year-tabs">
+            <button class="index-tab active" data-value="">All</button>
+            {years.map(year => (
+              <button class="index-tab" data-value={year}>{year}</button>
+            ))}
+          </div>
+        </div>
+        <div class="index-section">
+          <div class="index-label">Month</div>
+          <div class="index-tabs" id="month-tabs">
+            <button class="index-tab active" data-value="">All</button>
+            {months.map(month => (
+              <button class="index-tab" data-value={month.value}>{month.label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {sortedPosts.length > 0 && (
+      <div class="filter-summary" id="filter-summary">
+        <div class="summary-left">
+          <span class="summary-count">{sortedPosts.length}</span> {sortedPosts.length === 1 ? 'entry' : 'entries'} total
+        </div>
+        <div class="summary-right" id="summary-insight">
+          Navigating life's waves through reflection—learning to travel light, stay grounded, and build on solid foundations.
+        </div>
+      </div>
+    )}
+
     {sortedPosts.length > 0 ? (
-      <div class="posts-grid">
+      <div class="posts-grid" id="posts-grid">
         {sortedPosts.map(post => (
-          <PostCard
-            title={post.data.title}
-            description={post.data.description}
-            pubDate={post.data.pubDate}
-            category={post.data.category}
-            slug={post.id}
-            heroImage={post.data.heroImage?.src}
-            featured={post.data.featured}
-          />
+          <div
+            class="post-item"
+            data-year={post.data.pubDate.getFullYear()}
+            data-month={post.data.pubDate.getMonth() + 1}
+            data-slug={post.id}
+          >
+            <PostCard
+              title={post.data.title}
+              description={post.data.description}
+              pubDate={post.data.pubDate}
+              category={post.data.category}
+              slug={post.id}
+              heroImage={post.data.heroImage?.src}
+              featured={post.data.featured}
+            />
+          </div>
         ))}
       </div>
     ) : (
@@ -51,13 +110,17 @@ const sortedPosts = allPosts.sort(
         <p>No entries yet. The waters are calm...</p>
       </div>
     )}
+
+    <div class="empty-filter-state" id="empty-filter-state" style="display: none;">
+      <p>No entries found for this period.</p>
+    </div>
   </div>
 </BaseLayout>
 
 <style>
   .page-header {
     text-align: center;
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-xl);
   }
 
   .section-icon {
@@ -95,13 +158,129 @@ const sortedPosts = allPosts.sort(
     opacity: 0.7;
   }
 
+  /* Index Card Styles - Old File Cabinet Look */
+  .index-container {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .index-section {
+    margin-bottom: var(--space-lg);
+  }
+
+  .index-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .index-label {
+    font-family: var(--font-accent);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-xs);
+    padding-left: 2px;
+  }
+
+  .index-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0;
+    border-bottom: 1px solid var(--color-beige-dark);
+    padding-bottom: 0;
+  }
+
+  .index-tab {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem 0.35rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    margin-bottom: -1px;
+    letter-spacing: 0.02em;
+  }
+
+  .index-tab:hover {
+    color: var(--color-text);
+  }
+
+  .index-tab.active {
+    background: var(--color-background);
+    border-color: var(--color-beige-dark);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    color: var(--color-accent);
+  }
+
+  .index-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--color-background);
+  }
+
+  .filter-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    font-family: var(--font-accent);
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-xl);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px dashed var(--color-beige-dark);
+  }
+
+  .summary-left {
+    flex-shrink: 0;
+  }
+
+  .summary-right {
+    text-align: right;
+    opacity: 0.8;
+  }
+
+  .summary-count {
+    font-family: 'Courier New', monospace;
+    font-style: normal;
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+
   .posts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-lg);
   }
 
-  .empty-state {
+  .post-item {
+    transition: opacity var(--transition-base);
+    height: 100%;
+  }
+
+  .post-item.hidden {
+    display: none;
+  }
+
+  .posts-grid {
+    align-items: stretch;
+  }
+
+  .empty-state,
+  .empty-filter-state {
     text-align: center;
     color: var(--color-text-muted);
     font-family: var(--font-accent);
@@ -119,5 +298,136 @@ const sortedPosts = allPosts.sort(
     .posts-grid {
       grid-template-columns: 1fr;
     }
+
+    .index-tab {
+      font-size: 0.7rem;
+      padding: 0.35rem 0.5rem 0.3rem;
+    }
   }
 </style>
+
+<script is:inline>
+  const yearTabs = document.getElementById('year-tabs');
+  const monthTabs = document.getElementById('month-tabs');
+  const postsGrid = document.getElementById('posts-grid');
+  const emptyState = document.getElementById('empty-filter-state');
+  const filterSummary = document.getElementById('filter-summary');
+  const posts = document.querySelectorAll('.post-item');
+  const totalPosts = posts.length;
+
+  const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Core insights for each post
+  const postInsights = {
+    'logbook/ordinary_person': 'striving to master the mundane and build life on solid blocks',
+    'logbook/stay_empty': 'learning to let go—keeping only what truly matters to stay afloat',
+    'logbook/dat-n-dot': 'using writing as an anchor while navigating startup waves'
+  };
+
+  const defaultInsight = 'Navigating life\'s waves through reflection—learning to travel light, stay grounded, and build on solid foundations.';
+
+  let selectedYear = '';
+  let selectedMonth = '';
+
+  function updateSummary(count, visiblePosts) {
+    if (!filterSummary) return;
+
+    const entryWord = count === 1 ? 'entry' : 'entries';
+
+    // Build count text
+    let countText = '';
+    if (!selectedYear && !selectedMonth) {
+      countText = `<span class="summary-count">${count}</span> ${entryWord} total`;
+    } else if (selectedYear && !selectedMonth) {
+      countText = `<span class="summary-count">${count}</span> ${entryWord} from ${selectedYear}`;
+    } else if (!selectedYear && selectedMonth) {
+      countText = `<span class="summary-count">${count}</span> ${entryWord} in ${monthNames[selectedMonth]}`;
+    } else {
+      countText = `<span class="summary-count">${count}</span> ${entryWord} from ${monthNames[selectedMonth]} ${selectedYear}`;
+    }
+
+    // Build insight text from visible posts
+    let insightText = defaultInsight;
+    if (count > 0 && count < totalPosts) {
+      const insights = [];
+      visiblePosts.forEach(post => {
+        const slug = post.dataset.slug;
+        if (postInsights[slug]) {
+          insights.push(postInsights[slug]);
+        }
+      });
+      if (insights.length > 0) {
+        insightText = insights.length === 1
+          ? insights[0].charAt(0).toUpperCase() + insights[0].slice(1) + '.'
+          : insights.slice(0, 2).join('; ') + '.';
+      }
+    }
+
+    filterSummary.innerHTML = `
+      <div class="summary-left">${countText}</div>
+      <div class="summary-right" id="summary-insight">${insightText}</div>
+    `;
+  }
+
+  function filterPosts() {
+    let visibleCount = 0;
+    const visiblePosts = [];
+
+    posts.forEach(post => {
+      const postYear = post.dataset.year;
+      const postMonth = post.dataset.month;
+
+      const yearMatch = !selectedYear || postYear === selectedYear;
+      const monthMatch = !selectedMonth || postMonth === selectedMonth;
+
+      if (yearMatch && monthMatch) {
+        post.classList.remove('hidden');
+        visibleCount++;
+        visiblePosts.push(post);
+      } else {
+        post.classList.add('hidden');
+      }
+    });
+
+    // Update summary
+    updateSummary(visibleCount, visiblePosts);
+
+    // Show/hide empty state
+    if (emptyState && postsGrid) {
+      if (visibleCount === 0 && posts.length > 0) {
+        emptyState.style.display = 'block';
+        postsGrid.style.display = 'none';
+      } else {
+        emptyState.style.display = 'none';
+        postsGrid.style.display = 'grid';
+      }
+    }
+  }
+
+  function setActiveTab(container, value) {
+    container.querySelectorAll('.index-tab').forEach(tab => {
+      if (tab.dataset.value === value) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+  }
+
+  yearTabs?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('index-tab')) {
+      selectedYear = e.target.dataset.value;
+      setActiveTab(yearTabs, selectedYear);
+      filterPosts();
+    }
+  });
+
+  monthTabs?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('index-tab')) {
+      selectedMonth = e.target.dataset.value;
+      setActiveTab(monthTabs, selectedMonth);
+      filterPosts();
+    }
+  });
+</script>

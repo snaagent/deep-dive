@@ -1,7 +1,7 @@
 ---
 title: "A Life Well-Lived"
 description: "On striving to be a wholesome person who embraces the fullness of everyday living"
-pubDate: 2025-02-03
+pubDate: 2026-02-03
 category: logbook
 type: journal
 tags: ["self-reflection", "life", "growth"]
